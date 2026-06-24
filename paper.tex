@@ -61,6 +61,11 @@ only a 0.8-point accuracy penalty, matching an established hardware-aware toolki
 operating envelopes over array size, wire resistance, and temperature that
 delineate where each remedy is needed, and an energy model showing 18 to 41
 TOPS/W (versus about 4 for a digital baseline) bounded by the same IR-drop limit.
+Finally we map a vision-based robotics steering network onto the array with full
+system realism (layer tiling, a 1T1R access transistor, ADC/DAC quantization, and
+read noise) and show that the cheap MVM-error feature predicts its real task
+accuracy on held-out configurations ($R^2=0.96$), turning the envelope into a
+predictive design rule.
 The individual phenomena are established in prior work; our contribution is the
 calibrated, baselined, seed-averaged study and the operating envelopes that make
 the remedy boundaries explicit and quantitative. All experiments run in minutes
@@ -128,6 +133,11 @@ crossbar \cite{keshari2026} (reproducing its measured MNIST accuracy, cross-chec
 against AIHWKit), two-dimensional \emph{operating envelopes} that map where each
 remedy is needed in (array size, wire resistance) and (time, temperature), and an
 energy model (Section \ref{sec:envelope}).
+\item An inference-only mapping of a vision-based robotics steering network with
+full system realism (layer tiling, a 1T1R access transistor, ADC/DAC
+quantization, read noise), whose real-task-accuracy operating envelope is
+validated out-of-sample ($R^2=0.96$), turning the envelope from a descriptive map
+into a predictive design rule (Section \ref{sec:robotics}).
 \end{enumerate}
 
 We stress what is and is not new. Each phenomenon here is established:
@@ -629,6 +639,121 @@ over time and temperature, with 90/93 percent contours giving the rewrite cadenc
 versus array size, against a digital MAC reference. (b) Fraction of energy lost
 in the wires to IR drop, which grows with array size.}
 \label{fig:energy}
+\end{figure*}
+
+\section{Inference-Only Mapping of a Robotics Network}
+\label{sec:robotics}
+The preceding envelopes use small classifiers. To test whether the same
+calibrated device model constrains a realistic workload, we mapped a PilotNet
+steering convolutional network onto the Ag\textsubscript{2}O crossbar in an
+inference-only setting. PilotNet is a regression network that predicts a
+steering angle from a forward camera frame; we use real task accuracy, defined
+as the fraction of held-out frames whose predicted angle falls within a fixed
+tolerance of the reference, as the figure of merit throughout. In software
+(float) the network reaches $99.9$ percent on this metric, which sets the
+ceiling for every analog mapping below. Figure \ref{fig:rdemo} demonstrates the
+mapped inference directly: at a good operating point the crossbar reproduces the
+commanded steering and stays inside the lane-keeping tolerance across a drive,
+while at a degraded operating point the same network drifts out of lane.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/robotics_demo.png}
+\caption{The steering network running inference on the crossbar. Top: five road
+frames, each annotated with the ground-truth steering (white) and the
+crossbar-commanded steering at a good operating point (teal, $N=32$, $r_w=0.5$)
+and a degraded one (red, $N=128$, $r_w=4$). Bottom: the commanded steering across
+a drive. At the good point the crossbar tracks the reference inside the
+lane-keeping tolerance band (100 percent of frames in tolerance); at the degraded
+point it drifts out (24 percent), which would steer the vehicle out of its lane.}
+\label{fig:rdemo}
+\end{figure*}
+
+\subsection{Mapping with system realism}
+Each convolutional and fully connected layer is lowered to a matrix product by
+im2col and tiled across one or more physical arrays of size $N$. Every tile is
+evaluated through the full pipeline rather than an idealized matrix multiply: a
+DAC drives the rows, the column currents pass through ADC quantization, and
+peripheral read noise is added at the converters. The conductances are the
+calibrated Ag\textsubscript{2}O values, and the column currents are obtained
+from the same nodal IR-drop solve used in the rest of this work, parameterized
+by the wire-resistance ratio $r_w$. We evaluate two cell options: a passive
+one-resistor (1R) cell, and a one-transistor one-resistor (1T1R) cell with an
+access transistor. We sweep $40$ configurations in total: a $32$-point grid over
+array size and wire resistance, $4$ ADC/DAC bit-depth settings, and $4$ ideal
+references.
+
+\subsection{Operating envelope on real task accuracy}
+Figure \ref{fig:renv} shows the envelope. Real task accuracy collapses
+monotonically as array size $N$ and wire resistance $r_w$ grow: for the passive
+1R cell at $r_w=2$ it falls from $99.3$ percent at $N=32$ to $66.7$, $49.3$, and
+$34.7$ percent at $N=64$, $96$, and $128$. Steering regression tolerates far less
+analog error than the digit and spiral classifiers studied earlier, so the
+largest 1R tile within two points of the float ceiling at $r_w=2$ is only $N=32$;
+a demanding regression workload narrows the usable envelope sharply. The 1T1R
+cell is consistently more robust at large arrays ($72.0$, $56.0$, $37.3$ percent
+at $N=64$, $96$, $128$, versus $66.7$, $49.3$, $34.7$ for 1R), because the access
+transistor limits per-cell current and so reduces the IR drop. The gain is modest
+because the same series resistance compresses the device's already narrow
+conductance window; this is the expected access-device trade-off, made
+quantitative.
+
+\subsection{ADC/DAC ablation}
+Figure \ref{fig:radc} isolates converter precision. Holding $N=96$, $r_w=2$, and
+the 1R cell fixed, real task accuracy is essentially flat (about $48$ to $55$
+percent) from $4$-bit to full precision. In this IR-dominated regime the analog
+conductance and wire-resistance non-idealities, not converter bit depth, set
+accuracy. Spending bits on higher-resolution converters does not move the
+operating point; relieving IR drop (smaller tiles, or the 1T1R cell) does.
+
+\subsection{Out-of-sample validation}
+An envelope is only useful if it predicts configurations not used to build it. We
+test whether the cheap, network-independent MVM-error feature, a single small
+random-tile solve that needs no network run, predicts the real task accuracy of
+the full mapped network. Fitting a degree-2 curve of accuracy against
+$\log_{10}(\text{MVM error})$ on a random $60$ percent of configurations and
+predicting the held-out $40$ percent gives a held-out $R^2 = 0.96$ and a mean
+absolute error of $3.9$ accuracy points (Pearson $-0.92$). The prediction holds
+both within the 1R family and pooled across 1R and 1T1R, with the 1T1R points
+sitting slightly above the curve by the small IR-relief margin
+(Fig. \ref{fig:rval}). The feature therefore turns the envelope from a
+descriptive map into a predictive design rule: a new operating point can be
+placed on the envelope, within a few accuracy points, without running the
+network. That is what makes the envelope a tool rather than a chart, and it is
+the central result of this section.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{figures/robotics_envelope.png}
+\caption{Real task accuracy envelope for the PilotNet steering network mapped
+inference-only onto the calibrated Ag\textsubscript{2}O crossbar. Accuracy is
+shown over array size $N$ and wire resistance $r_w$ for the passive 1R cell and
+the 1T1R cell. Both collapse monotonically with $N$ and $r_w$; the 1T1R cell is
+consistently more robust at large arrays because its access transistor relieves
+the IR drop. The black contour marks the float ceiling minus two points.}
+\label{fig:renv}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{figures/robotics_validation.png}
+\caption{Out-of-sample validation of the cheap MVM-error feature against real
+task accuracy. (a) Real accuracy versus the feature for all grid configurations,
+with the degree-2 fit. (b) Held-out predictions versus actual accuracy lie on the
+diagonal: $R^2=0.96$, MAE $3.9$ points, so the feature predicts the real task
+accuracy of configurations it never saw, making the envelope predictive.}
+\label{fig:rval}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{figures/robotics_adcdac.png}
+\caption{ADC/DAC ablation at $N=96$, $r_w=2$, 1R cell. Real task accuracy is
+flat near $48$ to $55$ percent across $4$, $6$, $8$, and full-precision
+converters, indicating that analog conductance and wire-resistance
+non-idealities, not converter bit depth, set accuracy in this IR-dominated
+regime.}
+\label{fig:radc}
 \end{figure*}
 
 \section{Discussion: Separation by Remedy}

@@ -31,6 +31,9 @@ Python 3.11. Everything runs in minutes on a laptop CPU.
 | `harden2.py` | In-situ training with decay schedule (multi-seed) + IR-recovery calibration baseline |
 | `keshari_phase_energy.py` | Calibration to the published Ag2O device (Keshari et al. 2026), MNIST validation, operating-envelope phase diagrams, energy model |
 | `aihwkit_baseline.py` | AIHWKit analog-inference baseline on MNIST (run in an AIHWKit venv); saves shared weights |
+| `robotics_net.py` | PilotNet-style vision-based steering CNN + procedural driving data (inference-mapping workload) |
+| `system_model.py` | Enhanced crossbar system model: im2col tiling, 1T1R access transistor, ADC/DAC quantization, read noise, calibrated readout |
+| `sweep.py` / `analyze_envelope.py` / `robotics_demo.py` | Operating-envelope sweep, out-of-sample predictive validation, and the steering-inference demonstration figure |
 | `crossbar_*_viz.py` / `filmstrips.py` | Animations + multi-frame figures: inference, IR-drop / drift dynamics, signal flow, parallel-read circuit |
 
 ```bash
