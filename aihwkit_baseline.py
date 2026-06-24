@@ -20,17 +20,20 @@ print("fetching MNIST ...", flush=True)
 mnist = fetch_openml("mnist_784", version=1, as_frame=False, parser="liac-arff")
 X = (mnist.data / 255.0).astype("float32")
 y = mnist.target.astype(int)
+# resize 28x28 -> 8x8 (bilinear), matching Keshari et al.'s MNIST setup (64 inputs)
+import torch.nn.functional as F
+X = F.interpolate(torch.tensor(X).reshape(-1, 1, 28, 28), size=(8, 8),
+                  mode="bilinear", align_corners=False).reshape(-1, 64).numpy()
 Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=10000, random_state=0)
-Xtr, ytr = Xtr[:20000], ytr[:20000]          # subsample for speed
 Xte, yte = Xte[:2000], yte[:2000]
 
-# ---- float MLP 784-128-10 ----
-H = 128
-net = nn.Sequential(nn.Linear(784, H), nn.ReLU(), nn.Linear(H, 10))
+# ---- float MLP 64-256-10 (8x8 MNIST, matching the reference device study) ----
+H = 256
+net = nn.Sequential(nn.Linear(64, H), nn.ReLU(), nn.Linear(H, 10))
 opt = torch.optim.Adam(net.parameters(), 1e-3)
 lossf = nn.CrossEntropyLoss()
 Xtr_t, ytr_t = torch.tensor(Xtr), torch.tensor(ytr)
-for ep in range(8):
+for ep in range(25):
     perm = torch.randperm(len(Xtr_t))
     for i in range(0, len(Xtr_t), 128):
         b = perm[i:i + 128]
@@ -55,7 +58,7 @@ try:
 
     rpu = InferenceRPUConfig()                  # standard PCM-like inference model
     amodel = AnalogSequential(
-        AnalogLinear(784, H, bias=True, rpu_config=rpu), nn.ReLU(),
+        AnalogLinear(64, H, bias=True, rpu_config=rpu), nn.ReLU(),
         AnalogLinear(H, 10, bias=True, rpu_config=rpu))
     # load the float weights into the analog layers
     al = [m for m in amodel.modules() if isinstance(m, AnalogLinear)]

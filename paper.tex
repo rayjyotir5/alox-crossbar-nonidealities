@@ -49,13 +49,15 @@ can largely absorb: a two-spiral network deployed naively under IR drop sits at
 63.5 percent and a cheap output calibration recovers only to 69.3 percent, but
 training with the IR-drop network in the forward pass recovers it to 92.4
 percent, whereas thermally activated retention drift, being time varying,
-degrades a trained network to chance within weeks at 85 degrees Celsius and
+degrades a trained network to chance over time at elevated temperature and
 cannot be trained away. Under this model the three non-idealities tend to
 separate by remedy: variability is correctable at write time, IR drop is
 absorbable by training (and not by output calibration alone), and retention is
-only deferrable by rewriting. Calibrated to the published device, our simulator reproduces its measured 96.08
-percent MNIST accuracy to within about one point (94.8 percent), and an
-established hardware-aware toolkit (AIHWKit) agrees (95.4 percent). We then chart
+only deferrable by rewriting. We fit the model to the measured figures in the device's supplementary material
+(its conductance window, 100 states, and an activation energy $E_a=1.45$ eV from
+its Arrhenius retention plot); on its 8x8 MNIST task the calibrated device adds
+only a 0.8-point accuracy penalty, matching an established hardware-aware toolkit
+(AIHWKit, 0.6 points) and the near-zero penalty the authors report. We then chart
 operating envelopes over array size, wire resistance, and temperature that
 delineate where each remedy is needed, and an energy model showing 18 to 41
 TOPS/W (versus about 4 for a digital baseline) bounded by the same IR-drop limit.
@@ -536,31 +538,42 @@ conclusions in a real device and against an accepted baseline, we now calibrate
 the model to a published cell, validate it, chart operating envelopes, and add an
 energy model.
 
-\textbf{Calibration to a published device.} We set the conductance window,
-precision, rectification, and variability of the model to the measured Ag\textsubscript{2}O
-self-rectifying 64x64 crossbar of Keshari et al. \cite{keshari2026}: a multilevel
-window of 3.6 to 22.3 $\mu$S, more than four bits (16 levels), a rectification
-ratio above $10^3$, and the negligible spatiotemporal variation they report. We
-map a 784-128-10 MLP onto this device with differential pairs, 4-bit
-quantization, and programming noise. Table \ref{tab:mnist} compares MNIST
-accuracy: our calibrated simulator reaches $94.8 \pm 0.6$ percent, within about
-one point of the measured 96.08 percent, and an established hardware-aware
-inference toolkit (AIHWKit \cite{rasch2023}) on the same network gives
-$95.4 \pm 0.2$ percent. The agreement validates the calibration and situates our
-model among accepted tools.
+\textbf{Calibration to the published measured curves.} Rather than assume device
+parameters, we fit them to the figures in the supplementary material of Keshari
+et al. \cite{keshari2026}. From their multilevel data we take the conductance
+window of 3.6 to 22.3 $\mu$S and the 100 distinct conductance states they report
+(about 6.6 bits per cell, 9855 signed values with a differential pair). From the
+LRS retention failure plot (their Fig. S5b) we digitize the Arrhenius points
+(roughly $4\times10^3$ s at 373 K and their stated ten-year retention at 298 K)
+and fit an activation energy $E_a = 1.45$ eV; this reproduces their ten-year
+room-temperature retention and implies retention of only hours at 85 degrees,
+markedly shorter than the illustrative $E_a=1.0$ eV used in Section
+\ref{sec:retention}. Their measured potentiation curves (Fig. S8) are nearly
+linear (nonlinearity $\alpha_p \approx 0.02$), consistent with the
+gradient-proportional update we use, and their cell distributions (Fig. S4) show
+the low variation we model. We map an MLP onto this device, following their setup
+(8x8-resized MNIST, 64 inputs), with 100-level quantization and programming
+noise. Table \ref{tab:mnist} compares accuracy: the device penalty in our
+simulator is $0.8$ points (software $94.3$ to $93.5 \pm 0.3$), close to the
+$0.6$-point penalty of an established hardware-aware toolkit (AIHWKit
+\cite{rasch2023}, $93.7 \pm 0.1$) and to the near-zero penalty Keshari et al.
+report (96.1 to 96.08). Our absolute software baseline is below theirs, a
+training and architecture difference, but the quantity the calibration validates,
+the small loss the device itself adds, agrees across all three.
 
 \begin{table}[t]
-\caption{MNIST (784-128-10 MLP) on the calibrated Ag\textsubscript{2}O device.}
+\caption{8x8 MNIST MLP on the calibrated Ag\textsubscript{2}O device; the
+validated quantity is the device penalty (software minus device).}
 \label{tab:mnist}
 \centering
-\begin{tabular}{lc}
+\begin{tabular}{lcc}
 \toprule
-Method & Accuracy (\%) \\
+Method & Accuracy (\%) & Device penalty \\
 \midrule
-Software (float) & 95.70 \\
-AIHWKit analog inference \cite{rasch2023} & $95.4 \pm 0.2$ \\
-Our calibrated simulator (4-bit + variability) & $94.8 \pm 0.6$ \\
-Keshari et al. 2026, measured \cite{keshari2026} & 96.08 \\
+Software (float, ours) & 94.30 & -- \\
+AIHWKit analog inference \cite{rasch2023} & $93.7 \pm 0.1$ & 0.6 \\
+Our calibrated simulator & $93.5 \pm 0.3$ & 0.8 \\
+Keshari et al. 2026, measured \cite{keshari2026} & 96.08 & 0.02 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -573,7 +586,8 @@ program-verify and in-situ training (Sections \ref{sec:res-inf},
 \ref{sec:insitu}), and beyond it the array is IR-limited. Panel (b) is the
 retention envelope over time and temperature, evaluated on the trained MLP: the
 90 percent accuracy contour gives the rewrite cadence, which falls from years at
-room temperature to days at 85 degrees. Together the two envelopes are a
+room temperature to hours at 85 degrees (steep because the measured $E_a=1.45$ eV
+makes retention strongly temperature-dependent). Together the two envelopes are a
 predictive map: given a target accuracy, they bound the usable array size, wire
 resistance, and rewrite interval.
 
@@ -659,10 +673,11 @@ the calibration baseline (Section \ref{sec:insitu}) shows the recovery is not a
 trivial rescaling, but a measured or finite-difference gradient was not compared.
 The tasks (digits, two spirals, circles) are small enough to fit a single tile;
 we report a convolutional-layer fidelity rather than a full detector. We
-calibrate to the \emph{reported} parameters of a published device (conductance
-window, precision, rectification, variation) rather than fitting raw measured
-I-V and retention curves, and the energy model is a first-order estimate (read
-power plus a per-column ADC) without full peripheral, 1T1R, or interconnect
+calibrate by \emph{digitizing the published measured figures} of the device (the
+Arrhenius retention plot for $E_a$, the multilevel and cell-distribution plots,
+the potentiation curves); the authors release no raw per-point data files, so the
+fit carries figure-reading error, and the energy model is a first-order estimate
+(read power plus a per-column ADC) without full peripheral, 1T1R, or interconnect
 parasitics. None of the three underlying phenomena is itself novel; each is in
 the literature of Section \ref{sec:relwork}. The contribution is the calibrated,
 AIHWKit-baselined, seed-averaged study and the operating envelopes that make the
@@ -684,8 +699,8 @@ where each remedy is needed over array size, wire resistance, and temperature.
 None of the underlying phenomena is individually new; the value is the calibrated,
 baselined comparison and the predictive envelopes. Future work includes a 1T1R
 access-device model, measured or finite-difference in-situ gradients, broader
-retention-time distributions, fitting to raw measured device data, and larger
-networks.
+retention-time distributions, fitting to raw per-point data beyond the digitized
+figures, and larger networks.
 
 \section*{Acknowledgment}
 This work, including both the simulation experiments and the writing of this

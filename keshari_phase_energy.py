@@ -16,11 +16,12 @@ from crossbar_advanced import CrossbarIR, VREAD, KB_EV
 
 # ---- device calibrated to Keshari et al. 2026 (Ag2O, self-rectifying) ----
 G_LO, G_HI = 3.6e-6, 22.3e-6     # multilevel conductance window at 373 K (S)
-N_LEVELS = 16                     # >4-bit multilevel
+N_LEVELS = 100                    # 100 distinct states (Keshari et al., Supp. Note 1)
+EA_MEAS = 1.45                    # activation energy fit to measured Arrhenius (Fig. S5b)
 RECT = 1.0e3                      # self-rectification ratio (>10^3)
 T_READ = 100e-9                   # read pulse width (s)
 E_ADC = 1.0e-12                   # per-column ADC conversion energy (J), SAR-class
-VAR_SIGMA = 0.05                  # programming variability (negligible spatiotemporal)
+VAR_SIGMA = 0.02                  # low programming variability (Fig. S4: negligible spatiotemporal)
 G_MEAN = 0.5 * (G_LO + G_HI)
 
 
@@ -68,9 +69,9 @@ def mnist_validation():
         return 100 * np.mean(accs), 100 * np.std(accs)
 
     m4, s4 = run(VAR_SIGMA)                  # 4-bit + variability
-    print("[MNIST] 784-128-10 MLP, our calibrated Ag2O simulator:")
+    print("[MNIST] 8x8 MNIST, 64-256-10 MLP, our calibrated Ag2O simulator:")
     print(f"  software (float)                 : {acc_sw*100:.2f}")
-    print(f"  our sim (4-bit window + var)     : {m4:.2f} +/- {s4:.2f}")
+    print(f"  our sim (100-level window + var) : {m4:.2f} +/- {s4:.2f}")
     print(f"  Keshari et al. 2026 (measured)   : 96.08  (reference baseline)")
 
 
@@ -112,7 +113,8 @@ def operating_envelopes():
           f"(rectification suppresses sneak/write, not read-time IR drop)")
 
     # ---- (b) retention envelope: time x temperature -> trained-MLP accuracy ----
-    Ea, tau0 = 1.0, 3.15e8 / np.exp(1.0 / (KB_EV * 298.15))
+    Ea = EA_MEAS                                     # measured (Fig. S5b)
+    tau0 = 3.15e8 / np.exp(Ea / (KB_EV * 298.15))    # anchored to 10-yr retention at 25 C
     temps = np.array([25, 45, 65, 85, 105, 125.])
     times = np.logspace(0, np.log10(3.15e7), 14)     # 1 s .. 1 yr
     accT = np.full((len(temps), len(times)), 50.0)
