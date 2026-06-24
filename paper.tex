@@ -13,9 +13,9 @@
 
 \begin{document}
 
-\title{From Device Physics to In-Situ Learning:\\
-A Unified Simulation Study of AlO\textsubscript{x} Memristor\\
-Crossbar Non-Idealities}
+\title{Operating Envelopes for Memristor Crossbar\\
+Non-Idealities: A Calibrated Simulation Study from\\
+Device Physics to In-Situ Learning}
 
 \author{\IEEEauthorblockN{Jyotirmoy Ray}
 \IEEEauthorblockA{\textit{Wipro Research} \\
@@ -29,9 +29,10 @@ jyotirmoy.ray@wipro.com}
 Analog memristor crossbars promise large energy savings for neural-network
 inference by performing matrix-vector multiplication in place, but their
 practical accuracy is governed by device and circuit non-idealities. We build a
-single, physically grounded model of an aluminium-oxide (AlO\textsubscript{x})
-valence-change cell and scale it, without changing any equation, from one device
-up to a 64x64 crossbar and a small trained network. Using one consistent model
+single, physically grounded compact model of an oxide valence-change cell,
+calibrate it to a published self-rectifying Ag\textsubscript{2}O device, and
+scale it, without changing any equation, from one device up to a 64x64 crossbar
+and a small trained network. Using one consistent model
 we reproduce the pinched current-voltage hysteresis and its collapse with sweep
 frequency, quantify device-to-device variability across 4096 cells, solve the
 full wire-resistance network with modified nodal analysis, and model thermally
@@ -52,11 +53,16 @@ degrades a trained network to chance within weeks at 85 degrees Celsius and
 cannot be trained away. Under this model the three non-idealities tend to
 separate by remedy: variability is correctable at write time, IR drop is
 absorbable by training (and not by output calibration alone), and retention is
-only deferrable by rewriting. The individual phenomena are each established in
-prior work; our contribution is a single consistent model and a unified,
-reproducible, seed-averaged comparison that makes their different characters
-explicit. All experiments run in minutes on a laptop CPU and the code is
-publicly available on GitHub.
+only deferrable by rewriting. Calibrated to the published device, our simulator reproduces its measured 96.08
+percent MNIST accuracy to within about one point (94.8 percent), and an
+established hardware-aware toolkit (AIHWKit) agrees (95.4 percent). We then chart
+operating envelopes over array size, wire resistance, and temperature that
+delineate where each remedy is needed, and an energy model showing 18 to 41
+TOPS/W (versus about 4 for a digital baseline) bounded by the same IR-drop limit.
+The individual phenomena are established in prior work; our contribution is the
+calibrated, baselined, seed-averaged study and the operating envelopes that make
+the remedy boundaries explicit and quantitative. All experiments run in minutes
+on a laptop CPU and the code is publicly available on GitHub.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -115,6 +121,11 @@ recovers a network from 63.5 to 92.4 percent under wire resistance, while a chea
 output calibration recovers only to 69.3 percent (so the recovery is not a
 calibration artifact), and a matched demonstration that the same training is
 powerless against retention drift (Section \ref{sec:insitu}).
+\item Calibration of the model to a published self-rectifying Ag\textsubscript{2}O
+crossbar \cite{keshari2026} (reproducing its measured MNIST accuracy, cross-checked
+against AIHWKit), two-dimensional \emph{operating envelopes} that map where each
+remedy is needed in (array size, wire resistance) and (time, temperature), and an
+energy model (Section \ref{sec:envelope}).
 \end{enumerate}
 
 We stress what is and is not new. Each phenomenon here is established:
@@ -518,6 +529,94 @@ month (chance). No fixed set of weights can resist a time-varying decay.}
 \label{fig:retstrip}
 \end{figure*}
 
+\section{Calibration, Operating Envelope, and Energy}
+\label{sec:envelope}
+The experiments so far use the generic device model. To ground the quantitative
+conclusions in a real device and against an accepted baseline, we now calibrate
+the model to a published cell, validate it, chart operating envelopes, and add an
+energy model.
+
+\textbf{Calibration to a published device.} We set the conductance window,
+precision, rectification, and variability of the model to the measured Ag\textsubscript{2}O
+self-rectifying 64x64 crossbar of Keshari et al. \cite{keshari2026}: a multilevel
+window of 3.6 to 22.3 $\mu$S, more than four bits (16 levels), a rectification
+ratio above $10^3$, and the negligible spatiotemporal variation they report. We
+map a 784-128-10 MLP onto this device with differential pairs, 4-bit
+quantization, and programming noise. Table \ref{tab:mnist} compares MNIST
+accuracy: our calibrated simulator reaches $94.8 \pm 0.6$ percent, within about
+one point of the measured 96.08 percent, and an established hardware-aware
+inference toolkit (AIHWKit \cite{rasch2023}) on the same network gives
+$95.4 \pm 0.2$ percent. The agreement validates the calibration and situates our
+model among accepted tools.
+
+\begin{table}[t]
+\caption{MNIST (784-128-10 MLP) on the calibrated Ag\textsubscript{2}O device.}
+\label{tab:mnist}
+\centering
+\begin{tabular}{lc}
+\toprule
+Method & Accuracy (\%) \\
+\midrule
+Software (float) & 95.70 \\
+AIHWKit analog inference \cite{rasch2023} & $95.4 \pm 0.2$ \\
+Our calibrated simulator (4-bit + variability) & $94.8 \pm 0.6$ \\
+Keshari et al. 2026, measured \cite{keshari2026} & 96.08 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Operating envelopes.} Figure \ref{fig:envelope} charts, for the
+calibrated device, where each remedy is needed. Panel (a) is the IR-drop envelope
+over array size and wire resistance: below the 2 percent MVM-error contour naive
+deployment suffices, between roughly 2 and 30 percent the loss is recoverable by
+program-verify and in-situ training (Sections \ref{sec:res-inf},
+\ref{sec:insitu}), and beyond it the array is IR-limited. Panel (b) is the
+retention envelope over time and temperature, evaluated on the trained MLP: the
+90 percent accuracy contour gives the rewrite cadence, which falls from years at
+room temperature to days at 85 degrees. Together the two envelopes are a
+predictive map: given a target accuracy, they bound the usable array size, wire
+resistance, and rewrite interval.
+
+One nuance worth stating: self-rectification, the headline feature of the
+calibrated device, does \emph{not} reduce the read-time IR-drop error. In a fully
+parallel single-ended MVM every cell is forward-biased, so the rectifying element
+never engages; we verified that passive and self-rectifying cells give identical
+MVM error (difference below 0.01 percent). Self-rectification suppresses
+sneak-path and write-disturb currents and so enables denser passive arrays (the
+benefit Keshari et al. emphasize), but the read-time IR drop is a wire-resistance
+phenomenon it does not address. This separates two effects that are often
+conflated.
+
+\textbf{Energy.} Figure \ref{fig:energy} estimates compute efficiency. With the
+calibrated conductances, a read pulse, and a per-column ADC, the array delivers
+18 to 41 TOPS/W, rising with size as the ADC cost amortizes, against about 4
+TOPS/W for a 0.5 pJ digital MAC. Energy therefore favors larger arrays, but the
+IR-drop energy lost in the wires climbs from under 1 percent to 21 percent across
+the same range, and IR drop also corrupts accuracy. The practical conclusion is
+that the accuracy envelope of Fig. \ref{fig:envelope}(a), not energy, sets the
+usable array size; within that envelope the calibrated device offers roughly five
+to ten times the efficiency of the digital baseline.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{figures/phase_diagram.png}
+\caption{Operating envelopes for the calibrated Ag\textsubscript{2}O device.
+(a) IR-drop envelope: mean MVM error over array size and wire resistance, with
+2/10/30 percent contours marking the naive-OK, training-recoverable, and
+IR-limited regions. (b) Retention envelope: accuracy of the trained MNIST MLP
+over time and temperature, with 90/93 percent contours giving the rewrite cadence.}
+\label{fig:envelope}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/energy_model.png}
+\caption{Energy model for the calibrated device. (a) Compute efficiency (TOPS/W)
+versus array size, against a digital MAC reference. (b) Fraction of energy lost
+in the wires to IR drop, which grows with array size.}
+\label{fig:energy}
+\end{figure*}
+
 \section{Discussion: Separation by Remedy}
 \label{sec:discussion}
 Within this model and these tasks, the three non-idealities tend to separate by
@@ -559,30 +658,34 @@ backward pass uses an ideal-weight surrogate gradient rather than a measured one
 the calibration baseline (Section \ref{sec:insitu}) shows the recovery is not a
 trivial rescaling, but a measured or finite-difference gradient was not compared.
 The tasks (digits, two spirals, circles) are small enough to fit a single tile;
-we report a convolutional-layer fidelity rather than a full detector, and do not
-claim silicon-accurate energy or accuracy numbers, nor do we fit the model to
-measured AlO\textsubscript{x} data. Importantly, none of the three phenomena is
-itself novel; each is documented in the literature cited in
-Section \ref{sec:relwork}. The contribution is the unified, seed-averaged,
-baselined account on one consistent model, which we regard as reaching a
-reproducible-study or workshop bar rather than a new-mechanism result; closing
-the gap to a main-conference contribution would require measured-device
-validation, larger networks, and comparison against established hardware-aware
-training toolkits.
+we report a convolutional-layer fidelity rather than a full detector. We
+calibrate to the \emph{reported} parameters of a published device (conductance
+window, precision, rectification, variation) rather than fitting raw measured
+I-V and retention curves, and the energy model is a first-order estimate (read
+power plus a per-column ADC) without full peripheral, 1T1R, or interconnect
+parasitics. None of the three underlying phenomena is itself novel; each is in
+the literature of Section \ref{sec:relwork}. The contribution is the calibrated,
+AIHWKit-baselined, seed-averaged study and the operating envelopes that make the
+remedy boundaries quantitative. Remaining steps toward a top-venue result are
+fitting the model to raw measured data, a full peripheral and 1T1R model with
+silicon-grade energy, and larger networks.
 
 \section{Conclusion}
-Starting from one physically grounded AlO\textsubscript{x} device equation and
-scaling it without modification to a 64x64 array and a trained network, we gave a
-unified, seed-averaged account of three crossbar non-idealities. Under this model
-they tend to separate by remedy: variability is corrected at write time
-($88.3$ to $96.5$ percent), IR drop is absorbed by hardware-in-the-loop training
-($63.5$ to $92.4$ percent, where output calibration alone reaches only $69.3$),
-and retention is only deferrable. None of these phenomena is individually new; the
-value is the controlled, reproducible comparison in one place. Future work
-includes a 1T1R access-device model, measured or finite-difference in-situ
-gradients, broader retention-time distributions, fitting the model to measured
-AlO\textsubscript{x} data, and comparison against hardware-aware training
-toolkits on larger tasks.
+Starting from one physically grounded oxide-memristor device equation, calibrated
+to a published Ag\textsubscript{2}O cell, and scaling it without modification to a
+64x64 array and a trained network, we gave a unified, seed-averaged account of
+three crossbar non-idealities. Under this model they tend to separate by remedy:
+variability is corrected at write time ($88.3$ to $96.5$ percent), IR drop is
+absorbed by hardware-in-the-loop training ($63.5$ to $92.4$ percent, where output
+calibration alone reaches only $69.3$), and retention is only deferrable. The
+calibrated simulator reproduces the published 96.08 percent MNIST result to within
+about a point and agrees with AIHWKit, and the resulting operating envelopes map
+where each remedy is needed over array size, wire resistance, and temperature.
+None of the underlying phenomena is individually new; the value is the calibrated,
+baselined comparison and the predictive envelopes. Future work includes a 1T1R
+access-device model, measured or finite-difference in-situ gradients, broader
+retention-time distributions, fitting to raw measured device data, and larger
+networks.
 
 \section*{Acknowledgment}
 This work, including both the simulation experiments and the writing of this

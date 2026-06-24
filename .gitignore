@@ -7,3 +7,5 @@ __pycache__/
 /fig*.png
 /crossbar_*.png
 /*.gif
+*.npz
+__pycache__/

@@ -29,7 +29,9 @@ Python 3.11. Everything runs in minutes on a laptop CPU.
 | `crossbar_learn.py` | In-situ two-spiral learning, hardware-in-the-loop IR-drop training, post-training drift (Figs D-E) |
 | `seeds_experiments.py` | Multi-seed error bars, mixed-state IR drop, E_a sensitivity, second task |
 | `harden2.py` | In-situ training with decay schedule (multi-seed) + IR-recovery calibration baseline |
-| `crossbar_*_viz.py` | Animations: test-time inference, IR-drop / drift dynamics, analog signal flow, parallel-read circuit |
+| `keshari_phase_energy.py` | Calibration to the published Ag2O device (Keshari et al. 2026), MNIST validation, operating-envelope phase diagrams, energy model |
+| `aihwkit_baseline.py` | AIHWKit analog-inference baseline on MNIST (run in an AIHWKit venv); saves shared weights |
+| `crossbar_*_viz.py` / `filmstrips.py` | Animations + multi-frame figures: inference, IR-drop / drift dynamics, signal flow, parallel-read circuit |
 
 ```bash
 python3 alox_crossbar.py
