@@ -159,8 +159,12 @@ def main():
     anim.save("crossbar_circuit.gif", writer=PillowWriter(fps=11), dpi=92)
     update(int(nF * 0.62))                                # mid-flow frame for the still
     fig.savefig("crossbar_circuit_final.png", dpi=115)
+    # filmstrip: voltages arriving / current flowing / output ready
+    for i, k in enumerate([int(nF * 0.22), int(nF * 0.55), nF - 1]):
+        update(k)
+        fig.savefig(f"crossbar_circuit_f{i+1}.png", dpi=110)
     plt.close(fig)
-    print("  wrote crossbar_circuit.gif and crossbar_circuit_final.png")
+    print("  wrote crossbar_circuit.gif, final, and 3 filmstrip frames")
 
 
 if __name__ == "__main__":

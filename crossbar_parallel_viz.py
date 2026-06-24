@@ -138,8 +138,12 @@ def main():
     anim.save("crossbar_parallel.gif", writer=PillowWriter(fps=9), dpi=92)
     update(frames - 1)
     fig.savefig("crossbar_parallel_final.png", dpi=115)
+    # filmstrip: three representative frames (early / mid / done)
+    for i, k in enumerate([1, n_cells // 2, frames - 1]):
+        update(k)
+        fig.savefig(f"crossbar_parallel_f{i+1}.png", dpi=110)
     plt.close(fig)
-    print("  wrote crossbar_parallel.gif and crossbar_parallel_final.png")
+    print("  wrote crossbar_parallel.gif, final, and 3 filmstrip frames")
 
 
 if __name__ == "__main__":
