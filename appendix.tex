@@ -159,12 +159,9 @@ by the released code and inspected by the human before inclusion.
 \section{Additional Visualizations}
 \label{app:extra}
 Figure \ref{fig:compute} (referenced from Section \ref{sec:res-inf}) shows the
-program-and-read of an image into the array and the analog MVM scatter.
-Figures \ref{fig:parallel} and \ref{fig:circuit} are stills from animations built
-to communicate the in-memory parallelism: the first contrasts the $N\times M$
-sequential multiply-accumulate of a von Neumann engine with the single parallel
-read of the crossbar; the second shows the analog inputs entering all wordlines
-simultaneously and current summing down all bitlines at once.
+program-and-read of an image into the array and the analog MVM scatter. The
+in-memory-parallelism stills are shown earlier with the full-stack overview
+(Figs. \ref{fig:parallel} and \ref{fig:circuit} in Section \ref{sec:device}).
 
 \begin{figure}[t]
 \centering
@@ -175,28 +172,6 @@ about 0.5 percent mean error.}
 \label{fig:compute}
 \end{figure}
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.32\textwidth]{figures/crossbar_parallel_f1.png}\hfill
-\includegraphics[width=0.32\textwidth]{figures/crossbar_parallel_f2.png}\hfill
-\includegraphics[width=0.32\textwidth]{figures/crossbar_parallel_f3.png}
-\caption{The same MVM done two ways, shown at three times (left to right). The
-digital engine steps through $N\times M$ multiply-accumulates with a memory fetch
-each cycle (its counter climbs 1, mid, $N\times M$); the crossbar finishes the
-whole product in one parallel read at step 1 and then holds the answer.}
-\label{fig:parallel}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.32\textwidth]{figures/crossbar_circuit_f1.png}\hfill
-\includegraphics[width=0.32\textwidth]{figures/crossbar_circuit_f2.png}\hfill
-\includegraphics[width=0.32\textwidth]{figures/crossbar_circuit_f3.png}
-\caption{Analog inputs entering the crossbar in parallel, shown at three times
-(left to right): all wordlines are driven at once, every device passes $I=VG$,
-and current then sums down every bitline simultaneously into the outputs.}
-\label{fig:circuit}
-\end{figure*}
 
 \section{Reproducibility}
 \label{app:repro}

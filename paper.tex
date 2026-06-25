@@ -26,50 +26,23 @@ jyotirmoy.ray@wipro.com}
 \maketitle
 
 \begin{abstract}
-Analog memristor crossbars promise large energy savings for neural-network
-inference by performing matrix-vector multiplication in place, but their
-practical accuracy is governed by device and circuit non-idealities. We build a
-single, physically grounded compact model of an oxide valence-change cell,
-calibrate it to a published self-rectifying Ag\textsubscript{2}O device, and
-scale it, without changing any equation, from one device up to a 64x64 crossbar
-and a small trained network. Using one consistent model
-we reproduce the pinched current-voltage hysteresis and its collapse with sweep
-frequency, quantify device-to-device variability across 4096 cells, solve the
-full wire-resistance network with modified nodal analysis, and model thermally
-activated retention loss. We then study three questions about how these effects
-interact with computation; all headline numbers are averaged over multiple
-seeds. First, closed-loop program-verify writing suppresses the accuracy loss
-from variability (a 64 to 10 classifier recovers from 88.3 to 96.5 percent over
-five seeds, matching a 96.5 percent software baseline). Second, finite wire
-resistance scales sharply with array size (the mean output error of an
-all-low-resistance array rises from 19 to 92 percent from 16x16 to 128x128 at
-2.5 ohm per cell, and a realistic mixed-state map roughly halves these numbers).
-Third, wire resistance is a static, structured distortion that on-chip training
-can largely absorb: a two-spiral network deployed naively under IR drop sits at
-63.5 percent and a cheap output calibration recovers only to 69.3 percent, but
-training with the IR-drop network in the forward pass recovers it to 92.4
-percent, whereas thermally activated retention drift, being time varying,
-degrades a trained network to chance over time at elevated temperature and
-cannot be trained away. Under this model the three non-idealities tend to
-separate by remedy: variability is correctable at write time, IR drop is
-absorbable by training (and not by output calibration alone), and retention is
-only deferrable by rewriting. We fit the model to the measured figures in the device's supplementary material
-(its conductance window, 100 states, and an activation energy $E_a=1.45$ eV from
-its Arrhenius retention plot); on its 8x8 MNIST task the calibrated device adds
-only a 0.8-point accuracy penalty, matching an established hardware-aware toolkit
-(AIHWKit, 0.6 points) and the near-zero penalty the authors report. We then chart
-operating envelopes over array size, wire resistance, and temperature that
-delineate where each remedy is needed, and an energy model showing 18 to 41
-TOPS/W (versus about 4 for a digital baseline) bounded by the same IR-drop limit.
-Finally we map a vision-based robotics steering network onto the array with full
-system realism (layer tiling, a 1T1R access transistor, ADC/DAC quantization, and
-read noise) and show that the cheap MVM-error feature predicts its real task
-accuracy on held-out configurations ($R^2=0.96$), turning the envelope into a
-predictive design rule.
-The individual phenomena are established in prior work; our contribution is the
-calibrated, baselined, seed-averaged study and the operating envelopes that make
-the remedy boundaries explicit and quantitative. All experiments run in minutes
-on a laptop CPU and the code is publicly available on GitHub.
+Analog memristor crossbars compute matrix-vector products in place, but their
+accuracy is governed by device and circuit non-idealities. We build one
+physically grounded oxide-memristor model, calibrate it to a published
+self-rectifying Ag\textsubscript{2}O device, and scale it without changing any
+equation from a single cell to a 64x64 array and trained networks. The three
+dominant non-idealities separate by the remedy that helps: device variability is
+correctable at write time by program-verify, wire IR drop is a static distortion
+that hardware-in-the-loop training largely absorbs (a spiral network recovers
+from 63.5 to 92.4 percent, where output calibration alone reaches 69.3), and
+thermally activated retention is only deferrable by rewriting. We chart
+two-dimensional operating envelopes over array size, wire resistance, and
+temperature, and validate them out-of-sample: a cheap MVM-error feature predicts
+the real task accuracy of a vision-based robotics steering network, mapped
+inference-only with layer tiling, a 1T1R access transistor, and ADC/DAC
+quantization, with $R^2 = 0.96$. The individual phenomena are known; the
+contribution is a calibrated, baselined, reproducible framework whose envelopes
+act as predictive design rules. The code is released.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -216,9 +189,38 @@ zero the filament stays put, held by an energy barrier, so the conductance is a
 state slowly relaxes, which is retention loss (Section \ref{sec:retention}).
 Third, that stored conductance is exactly what a neural network needs as a
 \emph{weight}, and an array of such cells multiplies an input vector by a weight
-matrix in one electrical step (Section \ref{sec:array}). The rest of the paper
+matrix in one electrical step (Section \ref{sec:array}). Figures
+\ref{fig:parallel} and \ref{fig:circuit} make this last point, the heart of the
+neuromorphic compute stack, concrete: a digital engine performs the
+matrix-vector product as $N\times M$ sequential multiply-accumulates with a
+memory fetch each cycle, whereas the crossbar drives all inputs as voltages at
+once and reads the whole product in a single step. The rest of the paper
 builds on these three facts in order: the device, then the array and its
 non-idealities, then inference, then on-chip learning.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.32\textwidth]{figures/crossbar_parallel_f1.png}\hfill
+\includegraphics[width=0.32\textwidth]{figures/crossbar_parallel_f2.png}\hfill
+\includegraphics[width=0.32\textwidth]{figures/crossbar_parallel_f3.png}
+\caption{The same matrix-vector product done two ways, shown at three times (left
+to right). The digital engine steps through $N\times M$ multiply-accumulates with
+a memory fetch each cycle (its counter climbs 1, mid, $N\times M$); the crossbar
+finishes the whole product in one parallel read at step 1 and then holds the
+answer.}
+\label{fig:parallel}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.32\textwidth]{figures/crossbar_circuit_f1.png}\hfill
+\includegraphics[width=0.32\textwidth]{figures/crossbar_circuit_f2.png}\hfill
+\includegraphics[width=0.32\textwidth]{figures/crossbar_circuit_f3.png}
+\caption{Analog inputs entering the crossbar in parallel, shown at three times
+(left to right): all wordlines are driven at once, every device passes $I=VG$,
+and current then sums down every bitline simultaneously into the outputs.}
+\label{fig:circuit}
+\end{figure*}
 
 \subsection{Compact device model}
 We model the cell with a single internal state variable $w \in [0,1]$ that
